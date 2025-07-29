@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List
-
+from typing import Dict, Any, List, Optional
+from datetime import datetime
 from src.api.deps import get_db
 from src.api.routes.auth import get_current_active_user
 from src.api.security import rate_limit
@@ -11,6 +11,8 @@ router = APIRouter()
 class DashboardConfig(BaseModel):
     dashboard_id: str = Field(..., min_length=1, max_length=100, description="Unique dashboard identifier")
     config: Dict[str, Any] = Field(..., description="Dashboard configuration (structure, widgets, filters etc.)")
+    version: Optional[int] = Field(default=None, description="Config version (auto-increment)")
+    updated_at: Optional[datetime] = None
 
 class DashboardSummary(BaseModel):
     dashboard_id: str
@@ -20,7 +22,7 @@ class DashboardSummary(BaseModel):
 @router.post(
     "/config",
     summary="Save dashboard configuration",
-    description="Store/update dashboard configuration for user.",
+    description="Store/update dashboard configuration for user, with versioning.",
     response_model=DashboardConfig,
 )
 @rate_limit(10, 60)
@@ -34,12 +36,28 @@ async def save_dashboard_config(
     # Only admin or owner can create/update (basic RBAC, extend as needed)
     if not current_user.get("is_superuser", False):
         raise HTTPException(status_code=403, detail="Only admin can update dashboard config.")
+    prev_doc = await dashboards.find_one({"dashboard_id": config.dashboard_id})
+    next_version = (prev_doc["version"] + 1) if prev_doc and "version" in prev_doc else 1
+    # Save to version history too
+    await db["dashboard_versions"].insert_one({
+        "dashboard_id": config.dashboard_id,
+        "config": config.config,
+        "version": next_version,
+        "updated_at": datetime.utcnow(),
+        "updated_by": current_user["email"]
+    })
+    updated_doc = {
+        "dashboard_id": config.dashboard_id,
+        "config": config.config,
+        "version": next_version,
+        "updated_at": datetime.utcnow()
+    }
     await dashboards.update_one(
         {"dashboard_id": config.dashboard_id},
-        {"$set": {"config": config.config}},
+        {"$set": updated_doc},
         upsert=True,
     )
-    return config
+    return DashboardConfig(**updated_doc)
 
 # PUBLIC_INTERFACE
 @router.get(
@@ -79,4 +97,9 @@ async def get_dashboard_config(
     doc = await db["dashboards"].find_one({"dashboard_id": dashboard_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Dashboard not found.")
-    return DashboardConfig(dashboard_id=dashboard_id, config=doc.get("config", {}))
+    return DashboardConfig(
+        dashboard_id=dashboard_id,
+        config=doc.get("config", {}),
+        version=doc.get("version"),
+        updated_at=doc.get("updated_at"),
+    )
