@@ -15,6 +15,7 @@ from src.api.db import Base, engine
 
 # Ensure models are imported for table creation
 import src.api.models  # noqa: F401
+import src.api.models_auth  # noqa: F401
 
 # Ensure tables are created
 Base.metadata.create_all(bind=engine)
@@ -58,3 +59,8 @@ app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(export_router, prefix="/api/export", tags=["Export"])
 app.include_router(templates_router, prefix="/api/templates", tags=["Templates"])
 app.include_router(scheduling_router, prefix="/api/scheduling", tags=["Scheduling"])
+
+from src.api.routes.auth import router as auth_router
+from src.api.routes.user import router as user_router
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(user_router, prefix="/api/user", tags=["User"])
