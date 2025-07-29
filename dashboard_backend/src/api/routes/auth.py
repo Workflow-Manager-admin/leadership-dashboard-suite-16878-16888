@@ -62,12 +62,21 @@ async def authenticate_user_mongo(db, email: str, password: str):
         return user
     return None
 
+def _is_valid_tataelxsi_email(email: str) -> bool:
+    """Return True iff the email ends with '@tataelxsi.co.in'."""
+    return email.lower().endswith("@tataelxsi.co.in")
+
 # PUBLIC_INTERFACE
 @router.post("/register", summary="Register a new user", response_model=UserRead, tags=["Authentication"])
 async def register_user(user: UserCreate = Body(...), db=Depends(get_db)):
     """
     Register a new user with email and password in MongoDB. Email must be unique.
     """
+    if not _is_valid_tataelxsi_email(user.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Registration restricted: only '@tataelxsi.co.in' email addresses are allowed."
+        )
     users = db["users"]
     existing = await users.find_one({"email": user.email})
     if existing:
@@ -100,6 +109,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     """
     Authenticate user and return JWT token for use in subsequent requests.
     """
+    if not _is_valid_tataelxsi_email(form_data.username):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Login restricted: only '@tataelxsi.co.in' email addresses are allowed.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user = await authenticate_user_mongo(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
