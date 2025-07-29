@@ -62,10 +62,8 @@ app.include_router(export_router, prefix="/api/export", tags=["Export"])
 app.include_router(templates_router, prefix="/api/templates", tags=["Templates"])
 app.include_router(scheduling_router, prefix="/api/scheduling", tags=["Scheduling"])
 
-from src.api.routes.auth import router as auth_router
 from src.api.routes.user import router as user_router
 from src.api.routes.forgot_password import router as forgot_password_router
-app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/api/user", tags=["User"])
 app.include_router(forgot_password_router, prefix="/api/auth", tags=["Authentication"])
 

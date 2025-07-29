@@ -37,14 +37,12 @@ The backend exposes API endpoints for uploading and parsing files (Excel, PPT, P
 
 ## Authentication & Security
 
-- **Registration**: `/api/auth/register` - Registers a new user (email must be unique).
-- **Login**: `/api/auth/token` - Returns JWT access token (password required).
-- All major API endpoints require `Authorization: Bearer <token>`.
-- JWT token is validated and user account checked for `is_active` status.
+Authentication via registration and login endpoints has been disabled.
+All previous endpoints requiring user login can be accessed without authentication unless otherwise documented.
 
 ### Security Mechanisms
 
-- **RBAC**: Endpoints can check `is_superuser` or more granular roles (extensible via `security.py`).
+- **RBAC**: Endpoints can check `is_superuser` or more granular roles (extensible via `security.py`). (No longer enforced by login/dependency.)
 - **Rate Limiting**: Configurable per endpoint to prevent abuse (see code decorators).
 - **Exception Handling**: Consistent error responses (HTTPException, validation, unhandled errors).
 
