@@ -10,15 +10,7 @@ from src.api.routes.export import router as export_router
 from src.api.routes.templates import router as templates_router
 from src.api.routes.scheduling import router as scheduling_router
 
-# --- DB: Create ORM tables at app startup ---
-from src.api.db import Base, engine
-
-# Ensure models are imported for table creation
-import src.api.models  # noqa: F401
-import src.api.models_auth  # noqa: F401
-
-# Ensure tables are created
-Base.metadata.create_all(bind=engine)
+# (Removed SQLAlchemy ORM table initialization; now MongoDB only)
 
 app = FastAPI(
     title="SLT Dashboard Backend",

@@ -1,69 +1,102 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr, Field
+from bson import ObjectId
 
-from src.api.models_auth import User, Project, Team
 from src.api.routes.auth import get_current_active_user
 from src.api.deps import get_db
 
 router = APIRouter()
 
-# --- Schemas ---
 
 class UserRead(BaseModel):
-    id: int
+    id: str = Field(..., example="660c6ade86941510f7dffb52")
     email: EmailStr
     full_name: Optional[str]
     is_active: bool
     is_superuser: bool
 
-    class Config:
-        orm_mode = True
-
 class TeamRead(BaseModel):
-    id: int
+    id: str
     name: str
     description: Optional[str]
-    class Config:
-        orm_mode = True
 
 class ProjectRead(BaseModel):
-    id: int
+    id: str
     name: str
     description: Optional[str]
-    owner_id: int
-    team_id: int
-    class Config:
-        orm_mode = True
+    owner_id: Optional[str]
+    team_id: Optional[str]
 
 # PUBLIC_INTERFACE
 @router.get("/me", response_model=UserRead, summary="Get current user", tags=["User"])
-def read_users_me(current_user: User = Depends(get_current_active_user)):
-    return current_user
+async def read_users_me(current_user: dict = Depends(get_current_active_user)):
+    return UserRead(
+        id=str(current_user["_id"]),
+        email=current_user["email"],
+        full_name=current_user.get("full_name"),
+        is_active=current_user.get("is_active", True),
+        is_superuser=current_user.get("is_superuser", False),
+    )
 
 # PUBLIC_INTERFACE
 @router.get("/teams", response_model=List[TeamRead], summary="List teams", tags=["User"])
-def list_teams(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    return db.query(Team).all()
+async def list_teams(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    teams = await db["teams"].find({}).to_list(length=100)
+    return [
+        TeamRead(
+            id=str(team["_id"]),
+            name=team["name"],
+            description=team.get("description"),
+        )
+        for team in teams
+    ]
 
 # PUBLIC_INTERFACE
 @router.get("/projects", response_model=List[ProjectRead], summary="List projects", tags=["User"])
-def list_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    return db.query(Project).all()
+async def list_projects(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    projects = await db["projects"].find({}).to_list(length=100)
+    return [
+        ProjectRead(
+            id=str(p["_id"]),
+            name=p["name"],
+            description=p.get("description"),
+            owner_id=str(p["owner_id"]) if p.get("owner_id") else None,
+            team_id=str(p["team_id"]) if p.get("team_id") else None,
+        )
+        for p in projects
+    ]
 
 # PUBLIC_INTERFACE
 @router.get("/team/{team_id}", response_model=TeamRead, summary="Get team by id", tags=["User"])
-def get_team(team_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    team = db.query(Team).filter(Team.id == team_id).first()
+async def get_team(team_id: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    try:
+        oid = ObjectId(team_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Invalid team id")
+    team = await db["teams"].find_one({"_id": oid})
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    return team
+    return TeamRead(
+        id=str(team["_id"]),
+        name=team["name"],
+        description=team.get("description"),
+    )
 
 # PUBLIC_INTERFACE
 @router.get("/project/{project_id}", response_model=ProjectRead, summary="Get project by id", tags=["User"])
-def get_project(project_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    project = db.query(Project).filter(Project.id == project_id).first()
+async def get_project(project_id: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    try:
+        oid = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Invalid project id")
+    project = await db["projects"].find_one({"_id": oid})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    return ProjectRead(
+        id=str(project["_id"]),
+        name=project["name"],
+        description=project.get("description"),
+        owner_id=str(project["owner_id"]) if project.get("owner_id") else None,
+        team_id=str(project["team_id"]) if project.get("team_id") else None,
+    )

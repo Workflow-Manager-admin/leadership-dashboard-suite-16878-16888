@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
-from src.api.models import Dashboard as DashboardORM
 from src.api.deps import get_db
 
 router = APIRouter()
@@ -16,8 +14,8 @@ class ExportResult(BaseModel):
 
 # PUBLIC_INTERFACE
 @router.post("/dashboard", summary="Export dashboard data", description="Export dashboard as PDF, PPT, or HTML (stubbed returns a fake URL)", response_model=ExportResult)
-async def export_dashboard(export: ExportRequest, db: Session = Depends(get_db)):
-    dash = db.query(DashboardORM).filter_by(dashboard_id=export.dashboard_id).first()
+async def export_dashboard(export: ExportRequest, db=Depends(get_db)):
+    dash = await db["dashboards"].find_one({"dashboard_id": export.dashboard_id})
     if not dash:
         raise HTTPException(status_code=404, detail="Dashboard not found")
     # TODO: Build/export report (PDF/PPT/HTML) here
