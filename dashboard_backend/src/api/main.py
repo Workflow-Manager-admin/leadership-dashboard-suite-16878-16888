@@ -56,3 +56,7 @@ from src.api.routes.auth import router as auth_router
 from src.api.routes.user import router as user_router
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/api/user", tags=["User"])
+
+# --- Attach global error handlers ---
+from src.api.security import register_global_exception_handlers
+register_global_exception_handlers(app)
