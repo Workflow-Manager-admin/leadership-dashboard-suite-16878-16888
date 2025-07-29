@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# from src.api.db import get_database  # (Removed, import was unused)
 from src.api.routes.ingestion import router as ingestion_router
 from src.api.routes.parsing import router as parsing_router
 from src.api.routes.classification import router as classification_router
