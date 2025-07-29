@@ -10,8 +10,6 @@ from src.api.routes.export import router as export_router
 from src.api.routes.templates import router as templates_router
 from src.api.routes.scheduling import router as scheduling_router
 
-# (Removed SQLAlchemy ORM table initialization; now MongoDB only)
-
 app = FastAPI(
     title="SLT Dashboard Backend",
     description="Backend API for SLT configurable dashboards, file ingestion (Excel/PPT/PDF/Word), parsing, manual tagging, KPI/dashboards, templates, exports, and report scheduling.",
@@ -24,9 +22,18 @@ app = FastAPI(
         {"name": "Dashboard", "description": "Dashboard configuration and data APIs"},
         {"name": "Export", "description": "Data and dashboard export APIs"},
         {"name": "Templates", "description": "Dashboard template management"},
-        {"name": "Scheduling", "description": "Report scheduling API endpoints"}
+        {"name": "Scheduling", "description": "Report scheduling API endpoints"},
+        {"name": "Monitoring", "description": "Monitoring and metrics endpoints"},
+        {"name": "Health", "description": "Health endpoints and probes"},
+        {"name": "Realtime", "description": "WebSocket and real-time updates"},
+        {"name": "Authentication", "description": "User authentication and registration"},
+        {"name": "User", "description": "User/Team/Project APIs"}
     ]
 )
+
+# --- Monitoring & logging ---
+from src.api.logging_monitoring import add_monitoring_routes
+add_monitoring_routes(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,7 +45,10 @@ app.add_middleware(
 
 @app.get("/", tags=["Health"])
 def health_check():
-    """Health check endpoint for SLT Dashboard Backend."""
+    """
+    Health check endpoint for SLT Dashboard Backend.
+    DEPRECATED: Use /healthz for true service health, including DB check.
+    """
     return {"message": "Healthy"}
 
 

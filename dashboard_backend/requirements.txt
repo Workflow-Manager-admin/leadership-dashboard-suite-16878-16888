@@ -42,6 +42,9 @@ uvloop==0.21.0
 watchfiles==1.0.5
 websockets==15.0.1
 
+# Monitoring/logging
+prometheus-client==0.20.0
+
 # Database/ORM
 motor==3.4.0
 
