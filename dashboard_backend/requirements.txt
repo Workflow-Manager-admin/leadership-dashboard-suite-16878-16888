@@ -41,15 +41,3 @@ uvicorn==0.34.0
 uvloop==0.21.0
 watchfiles==1.0.5
 websockets==15.0.1
-
-# Monitoring/logging
-prometheus-client==0.20.0
-
-# Database/ORM
-motor==3.4.0
-
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-itsdangerous==2.2.0
-# For robust email validation if needed; already present for FastAPI
-# email_validator==2.2.0
