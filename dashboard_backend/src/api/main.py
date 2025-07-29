@@ -57,6 +57,30 @@ from src.api.routes.user import router as user_router
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/api/user", tags=["User"])
 
+# --- Real-time WS/SSE endpoints ---
+from src.api.routes.realtime import router as realtime_router
+app.include_router(realtime_router, tags=["Realtime"])
+
+@app.get("/realtime-help", tags=["Realtime"])
+def realtime_usage_docs():
+    """
+    **WebSocket Usage Information**
+
+    - For live dashboard updates, connect a WebSocket client to `/ws/dashboard/updates`
+    - The API will push JSON messages of format: `{"event": "...", "data": ...}`
+    - Connect from JS using: `const ws = new WebSocket("ws://<host>/ws/dashboard/updates")`
+    - For dashboard visualizations, send a subscribe event: `ws.send(JSON.stringify({event: "subscribe", dashboard_id: "<id>"}))`
+    - Proper authentication can be enforced by backend as needed
+    """
+    return {
+        "info": "WebSocket for real-time updates at /ws/dashboard/updates",
+        "usage": [
+            "Connect via WS at /ws/dashboard/updates",
+            "Send subscribe messages with dashboard_id for targeted updates",
+            "Receive push events for status/KPI/dashboard changes"
+        ]
+    }
+
 # --- Attach global error handlers ---
 from src.api.security import register_global_exception_handlers
 register_global_exception_handlers(app)
