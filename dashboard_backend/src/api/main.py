@@ -64,8 +64,10 @@ app.include_router(scheduling_router, prefix="/api/scheduling", tags=["Schedulin
 
 from src.api.routes.auth import router as auth_router
 from src.api.routes.user import router as user_router
+from src.api.routes.forgot_password import router as forgot_password_router
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(user_router, prefix="/api/user", tags=["User"])
+app.include_router(forgot_password_router, prefix="/api/auth", tags=["Authentication"])
 
 # --- Real-time WS/SSE endpoints ---
 from src.api.routes.realtime import router as realtime_router
