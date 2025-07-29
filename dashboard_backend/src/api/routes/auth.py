@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Optional
+import pymongo.errors
+from bson import ObjectId
 
-from src.api.models_auth import User
 from src.api.deps import get_db
 
 # ---- JWT config ----
@@ -20,6 +20,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
 router = APIRouter()
 
+
 # --- Schemas ---
 
 class UserCreate(BaseModel):
@@ -28,13 +29,10 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=6)
 
 class UserRead(BaseModel):
-    id: int
+    id: Optional[str]
     email: EmailStr
     full_name: Optional[str]
-    is_active: bool
-
-    class Config:
-        orm_mode = True
+    is_active: bool = True
 
 class Token(BaseModel):
     access_token: str
@@ -55,48 +53,64 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_user_by_email(db: Session, email: str):
-    return db.query(User).filter(User.email == email).first()
+async def get_user_by_email_mongo(db, email: str):
+    return await db["users"].find_one({"email": email})
 
-def authenticate_user(db: Session, email: str, password: str):
-    user = get_user_by_email(db, email)
-    if user and verify_password(password, user.hashed_password):
+async def authenticate_user_mongo(db, email: str, password: str):
+    user = await get_user_by_email_mongo(db, email)
+    if user and verify_password(password, user["hashed_password"]):
         return user
     return None
 
 # PUBLIC_INTERFACE
 @router.post("/register", summary="Register a new user", response_model=UserRead, tags=["Authentication"])
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+async def register_user(user: UserCreate = Body(...), db=Depends(get_db)):
     """
-    Register a new user with email and password. Email must be unique.
+    Register a new user with email and password in MongoDB. Email must be unique.
     """
-    existing = get_user_by_email(db, user.email)
+    users = db["users"]
+    existing = await users.find_one({"email": user.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+
     hashed_pw = get_password_hash(user.password)
-    db_user = User(email=user.email, full_name=user.full_name, hashed_password=hashed_pw)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    user_data = {
+        "email": user.email,
+        "full_name": user.full_name,
+        "hashed_password": hashed_pw,
+        "is_active": True,
+        "is_superuser": False,
+        "created_at": datetime.utcnow()
+    }
+    try:
+        insert_result = await users.insert_one(user_data)
+        new_user = await users.find_one({"_id": insert_result.inserted_id})
+    except pymongo.errors.DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return UserRead(
+        id=str(new_user["_id"]),
+        email=new_user["email"],
+        full_name=new_user.get("full_name"),
+        is_active=new_user.get("is_active", True),
+    )
 
 # PUBLIC_INTERFACE
 @router.post("/token", summary="Login and get JWT token", response_model=Token, tags=["Authentication"])
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)):
     """
     Authenticate user and return JWT token for use in subsequent requests.
     """
-    user = authenticate_user(db, form_data.username, form_data.password)
+    user = await authenticate_user_mongo(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user["_id"])})
     return {"access_token": access_token, "token_type": "bearer"}
 
-def get_user_from_token(db: Session, token: str = Depends(oauth2_scheme)):
+async def get_user_from_token(db, token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -109,17 +123,20 @@ def get_user_from_token(db: Session, token: str = Depends(oauth2_scheme)):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    try:
+        user = await db["users"].find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise credentials_exception
     if user is None:
         raise credentials_exception
     return user
 
 # PUBLIC_INTERFACE
-def get_current_active_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+async def get_current_active_user(db=Depends(get_db), token: str = Depends(oauth2_scheme)):
     """
     Dependency: Get current authenticated user.
     """
-    user = get_user_from_token(db, token)
-    if not user.is_active:
+    user = await get_user_from_token(db, token)
+    if not user.get("is_active", True):
         raise HTTPException(status_code=400, detail="Inactive user")
     return user

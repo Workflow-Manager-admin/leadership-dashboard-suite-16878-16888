@@ -1,14 +1,10 @@
 """
-FastAPI database dependency for SQLAlchemy session.
+FastAPI dependency for MongoDB database.
 """
 
-from .db import SessionLocal
+from .db import db
 
 # PUBLIC_INTERFACE
 def get_db():
-    """Yield a new SQLAlchemy session for a request and close after."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    """Yield the MongoDB database handle."""
+    yield db

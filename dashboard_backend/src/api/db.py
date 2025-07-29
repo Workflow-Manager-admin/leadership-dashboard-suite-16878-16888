@@ -1,17 +1,12 @@
 """
-SQLAlchemy database initialization for the dashboard_backend.
+MongoDB database initialization for the dashboard_backend using motor.
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+from motor.motor_asyncio import AsyncIOMotorClient
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dashboard.db")
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+MONGODB_DB = os.getenv("MONGODB_DB", "dashboard_db")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {},
-    pool_pre_ping=True
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+client = AsyncIOMotorClient(MONGODB_URL)
+db = client[MONGODB_DB]
