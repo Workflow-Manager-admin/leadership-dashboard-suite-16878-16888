@@ -51,7 +51,25 @@ class DashboardConfigEntity(BaseModel):
     dashboard_id: str = Field(..., description="Unique dashboard identifier")
     user_id: str = Field(..., description="Owner user id")
     config: Dict[str, Any] = Field(..., description="Dashboard configuration (structure, widgets, filters etc.)")
+    title: str = Field(default="", description="Dashboard title/label")
+    description: str = Field(default="", description="Optional description for dashboard")
+    is_archived: bool = Field(default=False, description="Mark dashboard as archived (soft delete)")
 
+# PUBLIC_INTERFACE
+class DashboardConfigCreateEntity(BaseModel):
+    """Request model for creating a dashboard config."""
+    dashboard_id: str = Field(..., description="Unique dashboard identifier")
+    config: Dict[str, Any] = Field(..., description="Dashboard config (JSON)")
+    title: str = Field(default="", description="Dashboard title/label")
+    description: str = Field(default="", description="Optional description for dashboard")
+
+# PUBLIC_INTERFACE
+class DashboardConfigUpdateEntity(BaseModel):
+    """Request model for updating dashboard dashboard."""
+    config: Dict[str, Any] = Field(default=None, description="Dashboard config (full update)")
+    title: str = Field(default=None, description="Dashboard title/label")
+    description: str = Field(default=None, description="Optional description for dashboard")
+    is_archived: bool = Field(default=None, description="Archive dashboard if True")
 
 # PUBLIC_INTERFACE
 class TemplateEntity(BaseModel):
@@ -60,6 +78,24 @@ class TemplateEntity(BaseModel):
     user_id: str = Field(..., description="Owner user id")
     name: str = Field(..., description="Template name")
     config: Dict[str, Any] = Field(..., description="Template dashboard configuration")
+    description: str = Field(default="", description="Optional template description")
+    is_archived: bool = Field(default=False, description="Mark template as archived (soft delete)")
+
+# PUBLIC_INTERFACE
+class TemplateCreateEntity(BaseModel):
+    """Request model for creating a dashboard template."""
+    template_id: str = Field(..., description="Unique template identifier")
+    name: str = Field(..., description="Template name")
+    config: Dict[str, Any] = Field(..., description="Template dashboard configuration")
+    description: str = Field(default="", description="Optional template description")
+
+# PUBLIC_INTERFACE
+class TemplateUpdateEntity(BaseModel):
+    """Request model for updating a dashboard template."""
+    name: str = Field(default=None, description="(Optional) New template name")
+    config: Dict[str, Any] = Field(default=None, description="(Optional) New template configuration")
+    description: str = Field(default=None, description="(Optional) New template description")
+    is_archived: bool = Field(default=None, description="(Optional) Archive template if True")
 
 
 # PUBLIC_INTERFACE
