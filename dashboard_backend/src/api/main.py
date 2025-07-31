@@ -61,6 +61,30 @@ async def on_startup():
     # Ensure that the background scheduler for scheduled report sending is started.
     start_scheduler_once()
 
+    # --- FAST FAIL FOR MISSING CONFIGURATION ---
+    import os
+    from src.api.db import MongoDB
+    # Try MongoDB connection (fail fast if unreachable)
+    try:
+        # Ping DB, raise if not reachable
+        db = MongoDB.get_db()
+        import asyncio
+        async def ping_mongo():
+            await db.command("ping")
+        asyncio.get_event_loop().run_until_complete(ping_mongo())
+    except Exception as e:
+        raise RuntimeError(f"MongoDB not reachable or misconfigured: {str(e)}")
+
+    # Check SMTP config presence, but do not panic if missing
+    smtp_required_keys = ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]
+    missing_smtp = [k for k in smtp_required_keys if not os.getenv(k)]
+    if missing_smtp:
+        print(f"Warning: Missing SMTP config keys: {missing_smtp}. Scheduled report emails may fail.")
+
+    # Recommend not to run with default insecure JWT in production
+    if os.getenv("JWT_SECRET", "supersecretkey") == "supersecretkey":
+        print("Warning: Using default JWT_SECRET which is insecure for production.")
+
 @app.get("/", tags=["Health"])
 def health_check():
     """Health check endpoint for SLT Dashboard Backend."""
