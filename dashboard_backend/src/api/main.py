@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import new error handler initialization and API envelope
+from src.api.utils.error_handlers import init_error_handlers
+from src.api.utils.response_envelope import api_response
+
 # from src.api.db import get_database  # (Removed, import was unused)
 from src.api.routes.ingestion import router as ingestion_router
 from src.api.routes.parsing import router as parsing_router
@@ -40,13 +44,17 @@ app = FastAPI(
     ]
 )
 
+# Robust CORS setup for development and deployment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],  # "*" for dev; restrict in prod
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register error handler middleware
+init_error_handlers(app)
 
 @app.on_event("startup")
 async def on_startup():
@@ -56,8 +64,7 @@ async def on_startup():
 @app.get("/", tags=["Health"])
 def health_check():
     """Health check endpoint for SLT Dashboard Backend."""
-    return {"message": "Healthy"}
-
+    return api_response(message="Healthy")
 
 # Register routers for each domain
 app.include_router(ingestion_router, prefix="/api/ingestion", tags=["Ingestion"])
