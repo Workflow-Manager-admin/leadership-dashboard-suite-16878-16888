@@ -1,5 +1,34 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from pydantic import BaseModel, Field
+
+# PUBLIC_INTERFACE
+class RuleCondition(BaseModel):
+    """A single atomic condition in a rule for document tagging/classification."""
+    field: str = Field(..., description="Path within parsed_content (support dot notation for nested keys)")
+    op: str = Field(..., description="Operator: one of 'equals', 'contains', 'regex', 'gt', 'lt', 'in'")
+    value: Union[str, int, float, List[Union[str, int, float]]] = Field(..., description="Value to match, list or scalar as per op")
+
+# PUBLIC_INTERFACE
+class ClassificationRuleEntity(BaseModel):
+    """Represents a rule for classifying/tagging documents after parsing."""
+    rule_id: str = Field(..., description="Unique identifier for the rule")
+    description: str = Field(..., description="Description of what this rule does")
+    conditions: List[RuleCondition] = Field(..., description="List of conditions to match all (AND logic)")
+    tags: List[str] = Field(..., description="Tags to assign if the rule matches")
+
+# PUBLIC_INTERFACE
+class RuleCreateEntity(BaseModel):
+    """Request model for creating a classification/tagging rule."""
+    description: str = Field(..., description="Description of the new rule")
+    conditions: List[RuleCondition] = Field(..., description="AND-list of match conditions")
+    tags: List[str] = Field(..., description="Tags to assign if rule matches")
+
+# PUBLIC_INTERFACE
+class RuleUpdateEntity(BaseModel):
+    """Request model for updating an existing rule."""
+    description: Optional[str] = Field(None, description="(Optional) New description")
+    conditions: Optional[List[RuleCondition]] = Field(None, description="(Optional) Replace rule conditions (AND semantics)")
+    tags: Optional[List[str]] = Field(None, description="(Optional) Replace tags for this rule")
 
 # PUBLIC_INTERFACE
 class UploadEntity(BaseModel):
