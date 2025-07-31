@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 from src.api.db import get_database
 from motor.motor_asyncio import AsyncIOMotorDatabase
+import asyncio
+
+from src.api.routes.stream import broadcast_dashboard_event  # WebSocket broadcast helper
 
 router = APIRouter()
 
@@ -31,6 +34,10 @@ async def save_dashboard_config(
         {"dashboard_id": config.dashboard_id},
         {"$set": config.dict()},
         upsert=True,
+    )
+    # Broadcast to all connected websocket clients (fire-and-forget)
+    asyncio.create_task(
+        broadcast_dashboard_event("dashboard_update", {"dashboard_id": config.dashboard_id, "config": config.config})
     )
     return config
 

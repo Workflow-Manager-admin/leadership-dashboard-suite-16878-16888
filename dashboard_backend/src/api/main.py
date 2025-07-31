@@ -10,6 +10,7 @@ from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.export import router as export_router
 from src.api.routes.templates import router as templates_router
 from src.api.routes.scheduling import router as scheduling_router
+from src.api.routes.stream import router as stream_router  # <-- WebSocket API
 
 app = FastAPI(
     title="SLT Dashboard Backend",
@@ -58,3 +59,35 @@ app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(export_router, prefix="/api/export", tags=["Export"])
 app.include_router(templates_router, prefix="/api/templates", tags=["Templates"])
 app.include_router(scheduling_router, prefix="/api/scheduling", tags=["Scheduling"])
+
+# Explicit WebSocket API registration & documentation
+app.include_router(stream_router, tags=["Streaming"])
+
+@app.get(
+    "/api/stream/docs",
+    tags=["Streaming"],
+    summary="WebSocket Streaming API usage",
+    description=(
+        "This endpoint describes how to use the real-time data streaming WebSocket API.<br><br>"
+        "**WebSocket Endpoint:** `/ws/dashboards`<br>"
+        "- Connect using a WebSocket client to `ws://<backend>/ws/dashboards`.<br>"
+        "- On data changes (dashboard, kpi, etc.) backend will push JSON: `{event: <event_type>, payload: <...>}`.<br>"
+        "- Events: `dashboard_update`, `kpi_update`, ...<br>"
+        "- To keep connection alive, send periodic 'ping' messages (receive 'pong')."
+    ),
+    response_model=None
+)
+def get_streaming_docs():
+    """
+    REST helper endpoint explaining the usage of streaming WebSocket API.
+    """
+    return {
+        "websocket_endpoint": "/ws/dashboards",
+        "purpose": "Real-time dashboard/data updates",
+        "push_format": {"event": "<event_type>", "payload": "dict (details depend on event_type)"},
+        "usage_notes": (
+            "Connect with a WebSocket client (Browser, JS, Python, etc.). "
+            "On dashboard or KPI data changes, the server will send push notifications. "
+            "Send 'ping' for keep-alive."
+        )
+    }
