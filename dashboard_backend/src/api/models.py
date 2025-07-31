@@ -72,3 +72,18 @@ class ClassificationResultEntity(BaseModel):
     """Represents the result of a classification/tagging process."""
     filename: str = Field(..., description="Filename to classify/tag")
     tags: List[str] = Field(..., description="Manual or rule-based tags")
+
+# --- Insights/Highlight API Models ---
+
+# PUBLIC_INTERFACE
+class InsightSummaryEntity(BaseModel):
+    """Summary insight entity for reporting trends/outliers/highlights."""
+    filename: str = Field(None, description="Filename")
+    summary: str = Field(..., description="Summary statement for the file or dataset")
+    highlights: List[str] = Field(..., description="List of highlight strings")
+
+# PUBLIC_INTERFACE
+class InsightsAPIResponse(BaseModel):
+    """API response for insights/highlights."""
+    insights: List[InsightSummaryEntity]
+
