@@ -4,6 +4,10 @@ from typing import List
 from src.api.db import get_database
 from src.api.models import UploadEntity
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from src.api.routes.parsing import extract_structured_data  # Import parsing logic
+
+import os
+import tempfile
 
 router = APIRouter()
 
@@ -18,17 +22,45 @@ class UploadResponse(BaseModel):
     status: str
 
 # PUBLIC_INTERFACE
-@router.post("/upload", summary="Ingest a file", description="Upload Excel, PowerPoint, PDF, or Word file for ingestion", response_model=UploadResponse)
+@router.post("/upload", summary="Ingest a file", description="Upload Excel, PowerPoint, PDF, or Word file for ingestion (parses and stores structured data)",
+             response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
-    Ingest a file (metadata only; actual storage not handled). Track upload in MongoDB.
+    Ingest a file, parse its structured data, and track upload in MongoDB.
+    The file is parsed immediately after upload.
     """
-    upload_doc = UploadEntity(filename=file.filename, status="uploaded")
-    await db.uploads.insert_one(upload_doc.model_dump())
-    return UploadResponse(filename=file.filename, status="uploaded")
+    # Save to temp location
+    suffix = os.path.splitext(file.filename)[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        # Extract data using the parsing utilities
+        try:
+            structured_data = await extract_structured_data(tmp_path, file.filename)
+        except Exception as e:
+            structured_data = {"error": str(e)}
+
+        # Upload record (status="parsed" if parsed else "error")
+        status = "parsed" if "error" not in structured_data else "error"
+        upload_doc = UploadEntity(filename=file.filename, status=status)
+        await db.uploads.insert_one(upload_doc.model_dump())
+
+        # Store parsed content (even if error, for debugging/feedback)
+        await db.parsed.update_one(
+            {"filename": file.filename},
+            {"$set": {"filename": file.filename, "parsed_content": structured_data}},
+            upsert=True
+        )
+        return UploadResponse(filename=file.filename, status=status)
+    finally:
+        # Clean up temp file
+        os.unlink(tmp_path)
 
 
 # PUBLIC_INTERFACE

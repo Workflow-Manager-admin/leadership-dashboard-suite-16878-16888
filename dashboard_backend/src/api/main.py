@@ -13,11 +13,19 @@ from src.api.routes.scheduling import router as scheduling_router
 
 app = FastAPI(
     title="SLT Dashboard Backend",
-    description="Backend API for SLT configurable dashboards, file ingestion (Excel/PPT/PDF/Word), parsing, manual tagging, KPI/dashboards, templates, exports, and report scheduling.",
+    description=(
+        "Backend API for SLT configurable dashboards, file ingestion (Excel/PPT/PDF/Word), "
+        "parses uploaded documents for structured data using openpyxl (Excel), python-pptx (PowerPoint), PyMuPDF (PDF), and python-docx (Word).\n\n"
+        "APIs:\n"
+        "- /api/ingestion/upload: Upload and parse Excel, PPTX, PDF, or Word files. Extracted tabular/textual data is stored in MongoDB.\n"
+        "- /api/parsing/parse: Retrieve parsed content by filename. "
+        "Supported file types: .xlsx, .xls, .pptx, .ppt, .pdf, .docx, .doc.\n"
+        "See responses in openapi docs for details of structured output per file type."
+    ),
     version="0.1.0",
     openapi_tags=[
-        {"name": "Ingestion", "description": "File and folder ingestion/mapping APIs"},
-        {"name": "Parsing", "description": "File parsing APIs"},
+        {"name": "Ingestion", "description": "File and folder ingestion/mapping APIs. Upload an Excel, PPTX, PDF, or Word file and its structured data will be parsed and stored."},
+        {"name": "Parsing", "description": "File parsing APIs. Retrieve structured data for previously ingested files. Supported: Excel, PowerPoint, PDF, Word."},
         {"name": "Classification", "description": "Data classification/tagging APIs"},
         {"name": "KPI", "description": "KPIs, analytics, and calculations"},
         {"name": "Dashboard", "description": "Dashboard configuration and data APIs"},
