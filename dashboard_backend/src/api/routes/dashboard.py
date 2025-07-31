@@ -4,16 +4,14 @@ from typing import Dict, Any, List
 from src.api.db import get_database
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import asyncio
-
 from src.api.routes.stream import broadcast_dashboard_event  # WebSocket broadcast helper
+from src.api.routes.auth import get_current_user
 
 router = APIRouter()
-
 
 class DashboardConfig(BaseModel):
     dashboard_id: str = Field(..., description="Unique dashboard identifier")
     config: Dict[str, Any] = Field(..., description="Dashboard configuration (structure, widgets, filters etc.)")
-
 
 class DashboardSummary(BaseModel):
     dashboard_id: str
@@ -25,14 +23,16 @@ class DashboardSummary(BaseModel):
 )
 async def save_dashboard_config(
     config: DashboardConfig,
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    user=Depends(get_current_user)
 ):
     """
     Save or update dashboard config by dashboard_id to MongoDB.
+    Associates dashboard with the current user.
     """
     await db.dashboards.update_one(
-        {"dashboard_id": config.dashboard_id},
-        {"$set": config.dict()},
+        {"dashboard_id": config.dashboard_id, "user_id": str(user["_id"])},
+        {"$set": {"dashboard_id": config.dashboard_id, "config": config.config, "user_id": str(user["_id"])}},
         upsert=True,
     )
     # Broadcast to all connected websocket clients (fire-and-forget)
@@ -46,12 +46,13 @@ async def save_dashboard_config(
     "/configs", summary="List dashboards", description="List all dashboard configs (as summaries).", response_model=List[DashboardSummary]
 )
 async def list_dashboards(
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    user=Depends(get_current_user)
 ):
     """
-    List all dashboards with basic summary information.
+    List all dashboards belonging to the current user.
     """
-    cursor = db.dashboards.find()
+    cursor = db.dashboards.find({"user_id": str(user["_id"])})
     result = []
     async for doc in cursor:
         title = ""
@@ -66,12 +67,13 @@ async def list_dashboards(
 )
 async def get_dashboard_config(
     dashboard_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    user=Depends(get_current_user)
 ):
     """
-    Retrieve dashboard config by dashboard_id from MongoDB.
+    Retrieve dashboard config by dashboard_id from MongoDB, only if owned by current user.
     """
-    doc = await db.dashboards.find_one({"dashboard_id": dashboard_id})
+    doc = await db.dashboards.find_one({"dashboard_id": dashboard_id, "user_id": str(user["_id"])})
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard config not found")
     return DashboardConfig(dashboard_id=doc["dashboard_id"], config=doc["config"])

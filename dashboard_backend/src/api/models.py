@@ -47,15 +47,17 @@ class FolderMappingEntity(BaseModel):
 
 # PUBLIC_INTERFACE
 class DashboardConfigEntity(BaseModel):
-    """Represents a dashboard configuration."""
+    """Represents a user-owned dashboard configuration."""
     dashboard_id: str = Field(..., description="Unique dashboard identifier")
+    user_id: str = Field(..., description="Owner user id")
     config: Dict[str, Any] = Field(..., description="Dashboard configuration (structure, widgets, filters etc.)")
 
 
 # PUBLIC_INTERFACE
 class TemplateEntity(BaseModel):
-    """Represents a dashboard template."""
+    """Represents a user-owned dashboard template."""
     template_id: str = Field(..., description="Unique template identifier")
+    user_id: str = Field(..., description="Owner user id")
     name: str = Field(..., description="Template name")
     config: Dict[str, Any] = Field(..., description="Template dashboard configuration")
 

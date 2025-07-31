@@ -10,6 +10,7 @@ from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.export import router as export_router
 from src.api.routes.templates import router as templates_router
 from src.api.routes.scheduling import router as scheduling_router
+from src.api.routes.auth import router as auth_router
 from src.api.utils.scheduler_utils import start_scheduler_once
 
 from src.api.routes.stream import router as stream_router  # <-- WebSocket API
@@ -68,6 +69,7 @@ app.include_router(export_router, prefix="/api/export", tags=["Export"])
 app.include_router(templates_router, prefix="/api/templates", tags=["Templates"])
 app.include_router(scheduling_router, prefix="/api/scheduling", tags=["Scheduling"])
 app.include_router(insights_router, prefix="/api/insights", tags=["Insights"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 
 # Explicit WebSocket API registration & documentation
 app.include_router(stream_router, tags=["Streaming"])
