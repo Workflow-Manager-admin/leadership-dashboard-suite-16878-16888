@@ -10,6 +10,8 @@ from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.export import router as export_router
 from src.api.routes.templates import router as templates_router
 from src.api.routes.scheduling import router as scheduling_router
+from src.api.utils.scheduler_utils import start_scheduler_once
+
 from src.api.routes.stream import router as stream_router  # <-- WebSocket API
 from src.api.routes.insights import router as insights_router  # <-- Insights API
 
@@ -44,6 +46,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def on_startup():
+    # Ensure that the background scheduler for scheduled report sending is started.
+    start_scheduler_once()
 
 @app.get("/", tags=["Health"])
 def health_check():
