@@ -16,9 +16,12 @@ class FileMetaResponse(BaseModel):
     detected_type: str = Field(..., description="Detected document type")
     meta: Dict[str, Any] = Field({}, description="Additional metadata extracted during ingestion")
 
+import hashlib
+
 def _list_uploaded_files_in_upload_dir() -> List[FileMetaResponse]:
     """
     Scans the uploads/ directory and constructs file metadata for all found files.
+    Ensures that returned file_id is unique across all time by combining hashed full path.
     """
     files: List[FileMetaResponse] = []
     upload_base = "uploads"
@@ -29,8 +32,9 @@ def _list_uploaded_files_in_upload_dir() -> List[FileMetaResponse]:
     for dirpath, dirnames, filenames in os.walk(upload_base):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
-            # Generate a deterministic file_id using the relative path (for simplicity)
-            file_id = os.path.splitext(filename)[0] + "_" + os.path.basename(dirpath)
+            # Use *hash* of relative file path as file_id, to ensure uniqueness on multi-upload/dates
+            rel_path = os.path.relpath(file_path, upload_base)
+            file_id = hashlib.sha1(rel_path.encode("utf-8")).hexdigest()
             detected_type = "other"
             if filename.lower().endswith(".xlsx"):
                 detected_type = "excel"
