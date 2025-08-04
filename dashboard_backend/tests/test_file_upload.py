@@ -5,6 +5,10 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
+import sys
+
+# Ensure src root is discoverable for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import the FastAPI app for testing.
 # The main FastAPI app is in src/api/main.py, named 'app'
