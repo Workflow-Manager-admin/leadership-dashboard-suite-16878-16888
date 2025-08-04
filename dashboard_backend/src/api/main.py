@@ -28,7 +28,8 @@ from src.api.routers import (
     kpi,
     export,
     scheduling,
-    websocket_stream
+    websocket_stream,
+    file_ingest_list  # NEW: router for /files/list
 )
 
 openapi_tags = [
@@ -68,6 +69,7 @@ def health_check():
 
 # API routers
 app.include_router(file_ingest.router, prefix="/files", tags=["file-ingest"])
+app.include_router(file_ingest_list.router, prefix="/files", tags=["file-ingest"])  # Register /files/list endpoint
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(folder.router, prefix="/folders", tags=["folder"])
 app.include_router(tagging.router, prefix="/tagging", tags=["tagging"])
