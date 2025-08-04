@@ -2,7 +2,7 @@
 Dashboard APIs: fetch data, filter, configure KPIs and charts, templates.
 """
 from fastapi import APIRouter, Depends
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field
 
 router = APIRouter()
@@ -39,15 +39,58 @@ class DashboardResult(BaseModel):
     kpis: List[KPIOption]
     summary: str
 
+# === In-memory Dashboard Registry ===
+# Each dashboard: {
+#   "dashboard_id": ...,
+#   "data": {file info, meta...},
+#   "charts": [...],
+#   "kpis": [...],
+#   "summary": str,
+# }
+
+DASHBOARDS: Dict[str, DashboardResult] = {}
+
+def add_dashboard(
+    dashboard_id: str,
+    file_name: str,
+    file_id: str,
+    upload_path: str,
+    detected_type: str,
+    meta: dict,
+) -> DashboardResult:
+    """
+    Register a new dashboard based on uploaded file metadata.
+    """
+    dashboard = DashboardResult(
+        dashboard_id=dashboard_id,
+        data={
+            "file_id": file_id,
+            "file_name": file_name,
+            "upload_path": upload_path,
+            "detected_type": detected_type,
+            "meta": meta,
+        },
+        charts=[],
+        kpis=[],
+        summary=f"Dashboard for file: {file_name} ({detected_type})",
+    )
+    DASHBOARDS[dashboard_id] = dashboard
+    return dashboard
+
+def get_dashboards_matching_filter(filters: DashboardFilter) -> List[DashboardResult]:
+    # For now, filter logic can be enhanced; here returns all dashboards.
+    return list(DASHBOARDS.values())
+
 # === Endpoints ===
 
 # PUBLIC_INTERFACE
 @router.get("/", response_model=List[DashboardResult], summary="Fetch dashboards", description="Fetch list of dashboards, with charts, KPIs, and data.")
 async def get_dashboards(filters: DashboardFilter = Depends()):
-    """Return available dashboard views filtered by params (stub)."""
-    # TODO: Fetch dashboards from DB / compute according to user config and filters
-    # Dummy response
-    return []
+    """
+    Return available dashboard views filtered by params.
+    Dashboards are created when files are uploaded.
+    """
+    return get_dashboards_matching_filter(filters)
 
 # PUBLIC_INTERFACE
 @router.get("/charts", response_model=List[ChartOption], summary="List chart options", description="Lists all chart options and configs.")

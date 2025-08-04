@@ -18,6 +18,9 @@ class FileProcessResponse(BaseModel):
 import os
 from datetime import datetime
 
+# Import dashboard creation logic to link file uploads and dashboards
+from src.api.routers.dashboard import add_dashboard
+
 # PUBLIC_INTERFACE
 @router.post("/upload", response_model=FileProcessResponse, summary="Upload file for ingestion", description="Upload and process supported files (xlsx, pptx, pdf, docx).")
 async def upload_file(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
@@ -26,6 +29,7 @@ async def upload_file(file: UploadFile = File(...), background_tasks: Background
     Triggers async parsing and detection pipeline.
     Stores the uploaded file in 'uploads/YYYY-MM-DD/', creating the folder if needed.
     Returns file_id and classification.
+    Automatically creates a dashboard entry for the uploaded file.
     """
     # Generate file and detect type
     file_id = str(uuid.uuid4())
@@ -40,6 +44,8 @@ async def upload_file(file: UploadFile = File(...), background_tasks: Background
         detected_type = "pdf"
     elif file_name.lower().endswith(".docx"):
         detected_type = "doc"
+    else:
+        detected_type = "other"
 
     # Determine today's date and the upload directory
     today = datetime.now().strftime("%Y-%m-%d")
@@ -54,11 +60,23 @@ async def upload_file(file: UploadFile = File(...), background_tasks: Background
         out_file.write(content)
 
     status_str = "processing"
-    # For now, stub response. Add processing to background later.
+    meta = {"upload_path": save_path}
+
+    # Automatically create dashboard entry linked to upload
+    dashboard_id = file_id  # Use file UUID as dashboard UUID
+    add_dashboard(
+        dashboard_id=dashboard_id,
+        file_name=file_name,
+        file_id=file_id,
+        upload_path=save_path,
+        detected_type=detected_type,
+        meta=meta,
+    )
+
     return FileProcessResponse(
         file_id=file_id,
         file_name=file_name,
         status=status_str,
         detected_type=detected_type,
-        meta={"upload_path": save_path}
+        meta=meta
     )
